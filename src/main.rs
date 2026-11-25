@@ -1,14 +1,12 @@
 use std::io::{self, Read};
 use std::collections::VecDeque;
 
-// Represents the scheduling algorithm selected by the user.
 enum Algorithm {
     Fcfs,
     Sjf,
     RoundRobin(u32),
 }
 
-// Represents one process in the system.
 struct Process {
     id: String,
     arrival_time: u32,
@@ -18,11 +16,9 @@ struct Process {
     completion_time: Option<u32>,
 }
 
-// Reads the input and converts it into an algorithm and a list of processes.
 fn parse_input(input: &str) -> Result<(Algorithm, Vec<Process>), String> {
     let mut lines = input.lines();
 
-    // Read the first line containing the scheduling algorithm.
     let first_line = lines
         .next()
         .ok_or("Missing scheduling algorithm")?;
@@ -48,11 +44,9 @@ fn parse_input(input: &str) -> Result<(Algorithm, Vec<Process>), String> {
 
     let mut processes = Vec::new();
 
-    // Read the remaining lines containing process information.
     for (index, line) in lines.enumerate() {
         let parts: Vec<&str> = line.split_whitespace().collect();
 
-        // Ignore empty lines.
         if parts.is_empty() {
             continue;
         }
@@ -87,10 +81,8 @@ fn parse_input(input: &str) -> Result<(Algorithm, Vec<Process>), String> {
 }
 
 fn schedule_fcfs(processes: &mut Vec<Process>) -> Vec<String> {
-    // Store the indices of processes in FCFS order.
     let mut indices: Vec<usize> = (0..processes.len()).collect();
 
-    // Sort by arrival time, then by original input order.
     indices.sort_by_key(|&i| {
         (processes[i].arrival_time, processes[i].input_order)
     });
@@ -98,22 +90,17 @@ fn schedule_fcfs(processes: &mut Vec<Process>) -> Vec<String> {
     let mut current_time = 0;
     let mut order = Vec::new();
 
-    // Execute each process in the sorted order.
     for i in indices {
         let process = &mut processes[i];
 
-        // If the CPU is idle, jump to the next arrival.
         if current_time < process.arrival_time {
             current_time = process.arrival_time;
         }
 
-        // Record the process being dispatched.
         order.push(process.id.clone());
 
-        // Run the process until it finishes.
         current_time += process.burst_time;
 
-        // Record its completion time.
         process.completion_time = Some(current_time);
     }
 
@@ -127,7 +114,6 @@ fn schedule_sjf(processes: &mut Vec<Process>) -> Vec<String> {
 
     while completed < processes.len() {
 
-        // Find the shortest available process.
         let next_process = processes
             .iter()
             .enumerate()
@@ -144,20 +130,16 @@ fn schedule_sjf(processes: &mut Vec<Process>) -> Vec<String> {
             Some(i) => {
                 let process = &mut processes[i];
 
-                // Record the dispatched process.
                 order.push(process.id.clone());
 
-                // Execute it completely.
                 current_time += process.burst_time;
 
-                // Record its completion time.
                 process.completion_time = Some(current_time);
 
                 completed += 1;
             }
 
             None => {
-                // No process is available. Jump to the next arrival.
                 current_time = processes
                     .iter()
                     .filter(|p| p.completion_time.is_none())
@@ -188,14 +170,12 @@ fn schedule_round_robin(
     let mut order = Vec::new();
 
     while completed < processes.len() {
-        // If the ready queue is empty, move to the next arrival.
         if ready_queue.is_empty() {
             current_time = current_time.max(
                 processes[indices[next_arrival]].arrival_time
             );
         }
 
-        // Add all processes that have arrived.
         while next_arrival < indices.len()
             && processes[indices[next_arrival]].arrival_time <= current_time
         {
@@ -204,15 +184,12 @@ fn schedule_round_robin(
         }
 
         let i = ready_queue.pop_front().unwrap();
-
-        // Run this process for one time slice.
         let run_time = processes[i].remaining_time.min(quantum);
         order.push(processes[i].id.clone());
 
         current_time += run_time;
         processes[i].remaining_time -= run_time;
 
-        // Add newly arrived processes before re-queuing the current process.
         while next_arrival < indices.len()
             && processes[indices[next_arrival]].arrival_time <= current_time
         {
